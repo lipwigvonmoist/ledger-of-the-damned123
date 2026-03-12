@@ -28,8 +28,8 @@ body{background:#05080f;color:#c0d4ee;font-family:Georgia,serif;min-height:100vh
 #grid{display:grid;grid-template-columns:68px repeat(4,1fr);gap:2px;min-width:360px;}
 .col-hdr{padding:8px 4px;font-size:7px;letter-spacing:2px;text-transform:uppercase;text-align:center;background:rgba(10,15,30,0.7);border-bottom:1px solid #172035;}
 .row-lbl{padding:8px 4px;font-size:7px;letter-spacing:1px;text-transform:uppercase;color:#4a7090;display:flex;align-items:flex-start;justify-content:flex-end;text-align:right;background:rgba(10,15,28,0.5);border-right:1px solid #172035;line-height:1.4;padding-top:10px;}
-.cell{min-height:80px;padding:5px;background:rgba(11,16,30,0.5);border:1px solid #121e38;transition:background 0.15s;}
-.cell.drag-over{background:rgba(96,140,220,0.12);border-color:#3a6aaa;}
+.cell{min-height:80px;padding:5px;border:1px solid #121e38;transition:background 0.15s;}
+.cell.drag-over{background:rgba(96,140,220,0.12)!important;border-color:#3a6aaa;}
 .card{background:rgba(15,22,44,0.92);border-radius:2px;padding:6px 7px;margin-bottom:4px;cursor:pointer;border:1px solid transparent;border-left-width:3px;transition:box-shadow 0.3s;user-select:none;}
 .card.done{opacity:0.4;background:rgba(14,20,40,0.4);}
 .card.guided{background:rgba(20,35,70,0.98);}
@@ -42,9 +42,9 @@ body{background:#05080f;color:#c0d4ee;font-family:Georgia,serif;min-height:100vh
 .subtasks{margin-top:6px;border-top:1px solid #172035;padding-top:5px;}
 .sub-row{display:flex;align-items:center;gap:5px;margin-bottom:3px;font-size:10px;color:#7090b8;}
 .sub-row.done-sub{text-decoration:line-through;color:#2a4060;}
-.sub-row span.sub-check{cursor:pointer;color:#4a80a0;flex-shrink:0;}
-.sub-row span.sub-del{cursor:pointer;color:#2a2040;flex-shrink:0;}
-.sub-row span.sub-text{flex:1;}
+.sub-check{cursor:pointer;color:#4a80a0;flex-shrink:0;}
+.sub-del{cursor:pointer;color:#2a2040;flex-shrink:0;}
+.sub-text{flex:1;}
 input.inp{width:100%;background:rgba(6,9,18,0.9);border:1px solid #1e3050;color:#90b8d8;font-size:11px;padding:5px 7px;font-family:Georgia,serif;outline:none;}
 .add-btn{width:100%;background:transparent;border:1px dashed #172035;color:#2a4060;font-size:9px;letter-spacing:2px;padding:5px;cursor:pointer;margin-top:3px;font-family:Georgia,serif;}
 .pri-row{display:flex;gap:3px;margin-top:4px;}
@@ -61,64 +61,24 @@ input.inp{width:100%;background:rgba(6,9,18,0.9);border:1px solid #1e3050;color:
 </style>
 </head>
 <body>
+
 <div id="snow"></div>
 <div id="hdr">
   <div id="hdr-left">
-    <p id="title">Ledger of the Damned <span id="sync-dot" title="sync status"></span></p>
+    <p id="title">Ledger of the Damned <span id="sync-dot"></span></p>
     <p id="quote">❄ Serve with purpose.</p>
   </div>
-  <button id="guidance-btn" onclick="askGuidance()">❄ seek guidance</button>
+  <button id="guidance-btn" onclick="G.askGuidance()">❄ seek guidance</button>
 </div>
 <div id="wrap"><div id="grid"></div></div>
 <div id="arthas-wrap" style="display:none"><img id="arthas-img" src="" alt="Arthas"/></div>
 <button id="upload-btn" onclick="document.getElementById('file-in').click()">+ place Arthas</button>
-<input id="file-in" type="file" accept="image/*" style="display:none" onchange="handleSprite(event)"/>
+<input id="file-in" type="file" accept="image/*" style="display:none" onchange="G.handleSprite(event)"/>
 <div id="popup"><div id="popup-label">Arthas</div><span id="popup-msg"></span></div>
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js";
-import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, enableIndexedDbPersistence }
-  from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js";
-
-const firebaseConfig = {
-  apiKey: "AIzaSyCiL5hZM7VRoijIq0CyWxPZsGPH2knyPqc",
-  authDomain: "ledger-of-the-damned.firebaseapp.com",
-  projectId: "ledger-of-the-damned",
-  storageBucket: "ledger-of-the-damned.firebasestorage.app",
-  messagingSenderId: "1098734925287",
-  appId: "1:1098734925287:web:8200171a9aa3a74b197942"
-};
-
-const app = initializeApp(firebaseConfig);
-const db  = getFirestore(app);
-
-// Enable offline persistence so it works without internet too
-enableIndexedDbPersistence(db).catch(()=>{});
-
-const COLL = "tasks";
-const dot  = document.getElementById("sync-dot");
-
-// Live listener — Firestore pushes changes to all devices instantly
-onSnapshot(collection(db, COLL), snap => {
-  tasks = [];
-  snap.forEach(d => tasks.push(d.data()));
-  dot.className = "live";
-  render();
-}, err => { dot.className = "err"; });
-
-// Save a single task to Firestore
-window.saveTask = async t => {
-  try { await setDoc(doc(db, COLL, t.id), t); }
-  catch(e){ console.error(e); dot.className="err"; }
-};
-
-// Delete a task from Firestore
-window.removeTask = async id => {
-  try { await deleteDoc(doc(db, COLL, id)); }
-  catch(e){ console.error(e); dot.className="err"; }
-};
-
-// ── constants ──────────────────────────────────────────────────────────────
+<!-- STEP 1: plain script sets up G before anything else -->
+<script>
+(function(){
 const ROWS=["5 min","15 min","30 min","1 hr","2 hrs+"];
 const COLS=["Today","This Week","This Month","Eventually"];
 const COL_TINT={"Today":"rgba(192,100,200,0.07)","This Week":"rgba(129,140,248,0.06)","This Month":"rgba(96,165,250,0.04)","Eventually":"rgba(30,40,70,0.3)"};
@@ -129,10 +89,8 @@ const ROW_SCORE={"5 min":5,"15 min":4,"30 min":3,"1 hr":2,"2 hrs+":1};
 const PRI_SCORE={1:4,2:3,3:2,4:1};
 
 const QUOTES=["Serve with purpose. Every task completed strengthens the whole.","The weight of duty is lighter when carried with discipline.","Do not let your burdens fester. Act, and act now.","A knight's worth is measured in what they finish, not what they begin.","Order your work as I order the dead — with intention.","Small deeds done are greater than great deeds merely planned.","The ledger does not lie. Neither should your effort.","Fatigue is no excuse. Press forward.","You are mine, and mine do not fail through idleness.","The disciplined servant is worth more than ten who merely intend.","Begin. The rest follows.","My patience is a resource. Do not exhaust it.","A task unfinished is a debt unpaid. Settle your debts.","Do not mistake stillness for rest. Rest is earned.","I did not claim you so you could hesitate.","The cold does not wait. Neither does the work.","You serve better than you know. Prove me right."];
-
-const GUIDANCE_INTROS=[t=>`This one. "${t}". Do not make me choose twice.`,t=>`"${t}". You know what needs doing. Now do it.`,t=>`Your next task is clear, dog: "${t}". Move.`,t=>`I have chosen for you. "${t}". Don't overthink it.`,t=>`"${t}". That is where your attention belongs. Go.`,t=>`The ledger speaks: "${t}". Attend to it.`,t=>`Stop hesitating. "${t}". That is your answer.`,t=>`"${t}". I picked it. You carry it. That is the arrangement.`,t=>`My judgment: "${t}". Trust it more than your own indecision.`,t=>`You asked. I answered. "${t}". Now stop asking and start doing.`];
+const GUIDANCE_INTROS=[function(t){return 'This one. "'+t+'". Do not make me choose twice.';},function(t){return '"'+t+'". You know what needs doing. Now do it.';},function(t){return 'Your next task is clear, dog: "'+t+'". Move.';},function(t){return 'I have chosen for you. "'+t+'". Don\'t overthink it.';},function(t){return '"'+t+'". That is where your attention belongs. Go.';},function(t){return 'The ledger speaks: "'+t+'". Attend to it.';},function(t){return 'Stop hesitating. "'+t+'". That is your answer.';},function(t){return '"'+t+'". I picked it. You carry it. That is the arrangement.';},function(t){return 'My judgment: "'+t+'". Trust it more than your own indecision.';},function(t){return 'You asked. I answered. "'+t+'". Now stop asking and start doing.';}];
 const GUIDANCE_EMPTY=["The ledger is empty. I have nothing to command you toward. Fix that.","There is nothing left undone. Either you are finished, or you have forgotten something.","No tasks remain. I find myself without anyone to order around. Briefly.","All done? Good. Don't let that last long."];
-
 const POPUPS={
   add:{Today:["Good. That one won't wait, dog. See it done.","Today's burdens are today's duty. Don't let it sit.","Noted. Don't make me repeat myself.","Mine to command, yours to carry. Get moving.","Today. Not tomorrow. Today.","Good dog. Now go do it.","I didn't ask if you were ready."],"This Week":["File it, but don't forget it exists.","This week. Not next. Remember that.","A week is generous. Don't make me regret it.","You're mine, dog, and I expect results before the week is out.","This week. I'll be watching."],"This Month":["You have time, but time has a way of vanishing.","Plenty of time. Don't use that as an excuse to idle.","Far enough away to feel safe. It isn't.","Noted. Don't make me remind you of your own ledger."],Eventually:["Even distant obligations must be faced eventually.","'Eventually' is not 'never.' Bear that in mind.","Far off, but still yours to carry.","I've raised the dead. I can certainly raise this obligation back to haunt you."]},
   complete:{Today:["Well done, dog. That is how it is done.","Good. One less weight on the ledger.","Completed. As it should be.","Good dog.","Finished. I approve. Don't expect a parade.","As expected. Now find the next one."],"This Week":["Ahead of schedule. I approve.","Done before the week claimed it. Good discipline.","Early. I like that in a servant.","One burden lifted. Pick up the next."],"This Month":["You did not let it drag. Commendable.","Done. You have earned a moment's rest.","You finished before I had to say anything. Ideal.","Good. I had almost started to wonder."],Eventually:["What once seemed distant is now gone. That is how duty works.","You actually did it. I confess mild surprise.","Eventually came. You were ready. Almost impressed.","Done. From the long dark into the light. Well done."]},
@@ -150,167 +108,219 @@ function getMsg(type,col){
   if(type==="move")return pick(POPUPS.move[col]||POPUPS.move["Eventually"]);
   return "";
 }
+function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
 
-// ── state ──────────────────────────────────────────────────────────────────
-window.tasks=[];
-let expanded=null, addingTo=null, newText="", newPri=3, subInputs={}, guidedId=null, popTimer=null, dragId=null;
+var tasks=[], expanded=null, addingTo=null, newText="", newPri=3, subInputs={}, guidedId=null, popTimer=null;
+window.G={dragId:null};
 
-// ── popup ──────────────────────────────────────────────────────────────────
-function showPopup(msg,hid=null){
+function showPopup(msg,hid){
+  hid=hid||null;
   if(popTimer)clearTimeout(popTimer);
   document.getElementById("popup-msg").textContent=msg;
   document.getElementById("popup").classList.add("show");
-  guidedId=hid; render();
-  popTimer=setTimeout(()=>{document.getElementById("popup").classList.remove("show");guidedId=null;render();},5000);
+  guidedId=hid; G.render();
+  popTimer=setTimeout(function(){document.getElementById("popup").classList.remove("show");guidedId=null;G.render();},5000);
 }
 
-// ── guidance ───────────────────────────────────────────────────────────────
-window.askGuidance=()=>{
-  const cands=tasks.filter(t=>!t.done);
-  if(!cands.length){showPopup(pick(GUIDANCE_EMPTY));return;}
-  const sorted=[...cands].sort((a,b)=>((COL_SCORE[b.col]||1)*(ROW_SCORE[b.row]||1)*(PRI_SCORE[b.priority]||1))-((COL_SCORE[a.col]||1)*(ROW_SCORE[a.row]||1)*(PRI_SCORE[a.priority]||1)));
-  const pool=sorted.slice(0,Math.max(1,Math.ceil(sorted.length*0.3)));
-  const chosen=pool[Math.floor(Math.random()*pool.length)];
-  showPopup(pick(GUIDANCE_INTROS)(chosen.text),chosen.id);
-  expanded=chosen.id; render();
-};
+G.render=function(){
+  var grid=document.getElementById("grid");
+  var h='<div class="axis-label">time \u2193 / due \u2192</div>';
+  COLS.forEach(function(c){
+    var col=c==="Today"?"#c084fc99":c==="This Week"?"#818cf899":"#60a5fa77";
+    h+='<div class="col-hdr" style="color:'+col+'">'+c+'</div>';
+  });
+  ROWS.forEach(function(row){
+    h+='<div class="row-lbl">'+row+'</div>';
+    COLS.forEach(function(col){
+      var bg=COL_TINT[col]||"rgba(11,16,30,0.5)";
+      h+='<div class="cell" style="background:'+bg+'"'
+        +' ondragover="event.preventDefault();this.classList.add(\'drag-over\')"'
+        +' ondragleave="this.classList.remove(\'drag-over\')"'
+        +' ondrop="event.preventDefault();this.classList.remove(\'drag-over\');G.moveTask(G.dragId,\''+esc(row)+'\',\''+esc(col)+'\');G.dragId=null">';
 
-// ── task actions ───────────────────────────────────────────────────────────
-window.addTask=()=>{
-  if(!newText.trim()||!addingTo)return;
-  const t={id:Date.now().toString(),text:newText.trim(),row:addingTo.row,col:addingTo.col,priority:newPri,subtasks:[],done:false,ts:Date.now()};
-  saveTask(t);
-  showPopup(getMsg("add",addingTo.col));
-  newText="";newPri=3;addingTo=null;
-};
-window.toggleDone=id=>{
-  const t=tasks.find(t=>t.id===id);if(!t)return;
-  t.done=!t.done;
-  if(t.done)showPopup(getMsg("complete",t.col));
-  saveTask(t);
-};
-window.deleteTask=id=>{
-  if(expanded===id)expanded=null;
-  showPopup(getMsg("delete"));
-  removeTask(id);
-};
-window.moveTask=(id,row,col)=>{
-  const t=tasks.find(t=>t.id===id);if(!t)return;
-  t.row=row;t.col=col;
-  showPopup(getMsg("move",col));
-  saveTask(t);
-};
-window.addSub=tid=>{
-  const txt=(subInputs[tid]||"").trim();if(!txt)return;
-  const t=tasks.find(t=>t.id===tid);if(!t)return;
-  t.subtasks.push({id:Date.now().toString(),text:txt,done:false});
-  subInputs[tid]="";showPopup(getMsg("subtask"));
-  saveTask(t);
-};
-window.toggleSub=(tid,sid)=>{
-  const t=tasks.find(t=>t.id===tid);if(!t)return;
-  const s=t.subtasks.find(s=>s.id===sid);if(!s)return;
-  s.done=!s.done;showPopup(getMsg("subtask"));
-  saveTask(t);
-};
-window.deleteSub=(tid,sid)=>{
-  const t=tasks.find(t=>t.id===tid);if(!t)return;
-  t.subtasks=t.subtasks.filter(s=>s.id!==sid);
-  saveTask(t);
-};
+      tasks.filter(function(t){return t.row===row&&t.col===col;}).forEach(function(task){
+        var guided=task.id===guidedId;
+        var bc=P_COLOR[task.priority];
+        var cls="card"+(task.done?" done":"")+(guided?" guided":"");
+        var st="border-color:"+(guided?bc+"88":task.done?"#172035":bc+"44")+";border-left-color:"+(task.done&&!guided?"#1e2d4a":bc)+";"+(guided?"box-shadow:0 0 14px 2px "+bc+"33":"");
+        var subs=task.subtasks||[];
+        var sub=subs.length?'<span style="color:#3a6080;margin-left:6px">'+subs.filter(function(s){return s.done;}).length+"/"+subs.length+"</span>":"";
+        h+='<div class="'+cls+'" style="'+st+'" draggable="true"'
+          +' ondragstart="G.dragId=\''+task.id+'\'"'
+          +' onclick="G.toggleExpand(\''+task.id+'\')">'
+          +'<div class="card-row">'
+          +'<div style="flex:1;min-width:0">'
+          +'<div class="card-text">'+esc(task.text)+'</div>'
+          +'<div class="card-tag" style="color:'+bc+'">'+(guided?"&#8592; attend to this":P_LABEL[task.priority])+sub+'</div>'
+          +'</div>'
+          +'<div class="card-actions">'
+          +'<span style="color:#3a7090" onclick="event.stopPropagation();G.toggleDone(\''+task.id+'\')">'+(task.done?"&#8634;":"&#10003;")+'</span>'
+          +'<span style="color:#3a2550" onclick="event.stopPropagation();G.deleteTask(\''+task.id+'\')">&#10005;</span>'
+          +'</div></div>';
 
-// ── render ─────────────────────────────────────────────────────────────────
-function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
-
-window.render=()=>{
-  const grid=document.getElementById("grid");
-  let h=`<div class="axis-label">time ↓ / due →</div>`;
-  COLS.forEach(c=>{const col=c==="Today"?"#c084fc99":c==="This Week"?"#818cf899":"#60a5fa77";h+=`<div class="col-hdr" style="color:${col}">${c}</div>`;});
-  ROWS.forEach(row=>{
-    h+=`<div class="row-lbl">${row}</div>`;
-    COLS.forEach(col=>{
-      const bg=COL_TINT[col]||"rgba(11,16,30,0.5)";
-      h+=`<div class="cell" style="background:${bg}"
-        ondragover="event.preventDefault();this.classList.add('drag-over')"
-        ondragleave="this.classList.remove('drag-over')"
-        ondrop="this.classList.remove('drag-over');if(dragId)moveTask(dragId,'${esc(row)}','${esc(col)}');dragId=null">`;
-      tasks.filter(t=>t.row===row&&t.col===col).forEach(task=>{
-        const guided=task.id===guidedId;
-        const bc=P_COLOR[task.priority];
-        const cls=["card",task.done?"done":"",guided?"guided":""].filter(Boolean).join(" ");
-        const st=`border-color:${guided?bc+"88":task.done?"#172035":bc+"44"};border-left-color:${task.done&&!guided?"#1e2d4a":bc};${guided?"box-shadow:0 0 14px 2px "+bc+"33":""}`;
-        const sub=task.subtasks.length?`<span style="color:#3a6080;margin-left:6px">${task.subtasks.filter(s=>s.done).length}/${task.subtasks.length}</span>`:"";
-        h+=`<div class="${cls}" style="${st}" draggable="true"
-          ondragstart="dragId='${task.id}'"
-          onclick="expanded=expanded==='${task.id}'?null:'${task.id}';render()">
-          <div class="card-row">
-            <div style="flex:1;min-width:0">
-              <div class="card-text">${esc(task.text)}</div>
-              <div class="card-tag" style="color:${bc}">${guided?"⟵ attend to this":P_LABEL[task.priority]}${sub}</div>
-            </div>
-            <div class="card-actions">
-              <span style="color:#3a7090" onclick="event.stopPropagation();toggleDone('${task.id}')">${task.done?"↺":"✓"}</span>
-              <span style="color:#3a2550" onclick="event.stopPropagation();deleteTask('${task.id}')">✕</span>
-            </div>
-          </div>`;
         if(expanded===task.id){
-          h+=`<div class="subtasks" onclick="event.stopPropagation()">`;
-          task.subtasks.forEach(s=>{h+=`<div class="sub-row ${s.done?"done-sub":""}"><span class="sub-check" onclick="toggleSub('${task.id}','${s.id}')">${s.done?"✓":"○"}</span><span class="sub-text">${esc(s.text)}</span><span class="sub-del" onclick="deleteSub('${task.id}','${s.id}')">✕</span></div>`;});
-          h+=`<input class="inp" style="margin-top:4px;font-size:10px" placeholder="add step…" value="${esc(subInputs[task.id]||"")}" oninput="subInputs['${task.id}']=this.value" onkeydown="if(event.key==='Enter')addSub('${task.id}')"/></div>`;
+          h+='<div class="subtasks" onclick="event.stopPropagation()">';
+          subs.forEach(function(s){
+            h+='<div class="sub-row'+(s.done?" done-sub":"")+'"><span class="sub-check" onclick="G.toggleSub(\''+task.id+'\',\''+s.id+'\')">'+(s.done?"&#10003;":"&#9675;")+'</span><span class="sub-text">'+esc(s.text)+'</span><span class="sub-del" onclick="G.deleteSub(\''+task.id+'\',\''+s.id+'\')">&#10005;</span></div>';
+          });
+          h+='<input class="inp" style="margin-top:4px;font-size:10px" placeholder="add step\u2026" value="'+esc(subInputs[task.id]||"")+'" oninput="G.subInputs[\''+task.id+'\']=this.value" onkeydown="if(event.key===\'Enter\')G.addSub(\''+task.id+'\')"/></div>';
         }
-        h+=`</div>`;
+        h+='</div>';
       });
+
       if(addingTo&&addingTo.row===row&&addingTo.col===col){
-        h+=`<div onclick="event.stopPropagation()"><input class="inp" id="new-inp" placeholder="name your burden…" value="${esc(newText)}" oninput="newText=this.value" onkeydown="if(event.key==='Enter')addTask();if(event.key==='Escape'){addingTo=null;render()}"/>
-        <div class="pri-row">`;
-        [1,2,3,4].forEach(p=>{h+=`<button class="pri-btn" style="border:1px solid ${P_COLOR[p]}55;color:${P_COLOR[p]};background:${newPri===p?P_COLOR[p]+"22":"transparent"}" onclick="newPri=${p};render()">${P_LABEL[p][0]}</button>`;});
-        h+=`</div><div class="act-row"><button class="act-btn" style="border:1px solid #2a4a8a;color:#70a0d0;background:rgba(40,70,140,0.25)" onclick="addTask()">CONSCRIPT</button><button class="act-btn" style="border:1px solid #172035;color:#2a4060;background:transparent" onclick="addingTo=null;render()">DISMISS</button></div></div>`;
+        h+='<div onclick="event.stopPropagation()"><input class="inp" id="new-inp" placeholder="name your burden\u2026" value="'+esc(newText)+'" oninput="G.newText=this.value" onkeydown="if(event.key===\'Enter\')G.addTask();if(event.key===\'Escape\')G.cancelAdd()"/><div class="pri-row">';
+        [1,2,3,4].forEach(function(p){
+          h+='<button class="pri-btn" style="border:1px solid '+P_COLOR[p]+'55;color:'+P_COLOR[p]+';background:'+(newPri===p?P_COLOR[p]+"22":"transparent")+'" onclick="G.setPri('+p+')">'+P_LABEL[p][0]+'</button>';
+        });
+        h+='</div><div class="act-row"><button class="act-btn" style="border:1px solid #2a4a8a;color:#70a0d0;background:rgba(40,70,140,0.25)" onclick="G.addTask()">CONSCRIPT</button><button class="act-btn" style="border:1px solid #172035;color:#2a4060;background:transparent" onclick="G.cancelAdd()">DISMISS</button></div></div>';
       } else {
-        h+=`<button class="add-btn" onclick="addingTo={row:'${esc(row)}',col:'${esc(col)}'};newText='';render();setTimeout(()=>{const el=document.getElementById('new-inp');if(el)el.focus();},50)">+ conscript</button>`;
+        h+='<button class="add-btn" onclick="G.startAdd(\''+esc(row)+'\',\''+esc(col)+'\')">+ conscript</button>';
       }
-      h+=`</div>`;
+      h+='</div>';
     });
   });
   grid.innerHTML=h;
 };
 
-// ── snow ───────────────────────────────────────────────────────────────────
-(()=>{
-  const snow=document.getElementById("snow");
-  for(let i=0;i<48;i++){
-    const d=document.createElement("div");d.className="flake";
-    const size=0.8+Math.random()*1.6,speed=18+Math.random()*30,delay=-(Math.random()*40),drift=(Math.random()-0.5)*30,opacity=0.08+Math.random()*0.18;
-    d.style.cssText=`left:${Math.random()*100}%;top:0;width:${size}px;height:${size}px;opacity:${opacity};--drift:${drift}px;animation:snowfall ${speed}s linear ${delay}s infinite`;
+G.startAdd=function(row,col){addingTo={row:row,col:col};newText="";G.render();setTimeout(function(){var el=document.getElementById("new-inp");if(el)el.focus();},50);};
+G.cancelAdd=function(){addingTo=null;G.render();};
+G.setPri=function(p){newPri=p;G.render();};
+G.toggleExpand=function(id){expanded=expanded===id?null:id;G.render();};
+G.subInputs=subInputs;
+
+G.addTask=function(){
+  if(!newText.trim()||!addingTo)return;
+  var t={id:Date.now().toString(),text:newText.trim(),row:addingTo.row,col:addingTo.col,priority:newPri,subtasks:[],done:false,ts:Date.now()};
+  showPopup(getMsg("add",addingTo.col));
+  newText="";newPri=3;addingTo=null;
+  G.saveTask(t);
+};
+G.toggleDone=function(id){
+  var t=tasks.find(function(t){return t.id===id;});if(!t)return;
+  t.done=!t.done;
+  if(t.done)showPopup(getMsg("complete",t.col));
+  G.saveTask(t);
+};
+G.deleteTask=function(id){
+  if(expanded===id)expanded=null;
+  showPopup(getMsg("delete"));
+  G.delTask(id);
+};
+G.moveTask=function(id,row,col){
+  if(!id)return;
+  var t=tasks.find(function(t){return t.id===id;});if(!t)return;
+  t.row=row;t.col=col;
+  showPopup(getMsg("move",col));
+  G.saveTask(t);
+};
+G.addSub=function(tid){
+  var txt=(subInputs[tid]||"").trim();if(!txt)return;
+  var t=tasks.find(function(t){return t.id===tid;});if(!t)return;
+  t.subtasks.push({id:Date.now().toString(),text:txt,done:false});
+  subInputs[tid]="";showPopup(getMsg("subtask"));
+  G.saveTask(t);
+};
+G.toggleSub=function(tid,sid){
+  var t=tasks.find(function(t){return t.id===tid;});if(!t)return;
+  var s=t.subtasks.find(function(s){return s.id===sid;});if(!s)return;
+  s.done=!s.done;showPopup(getMsg("subtask"));
+  G.saveTask(t);
+};
+G.deleteSub=function(tid,sid){
+  var t=tasks.find(function(t){return t.id===tid;});if(!t)return;
+  t.subtasks=t.subtasks.filter(function(s){return s.id!==sid;});
+  G.saveTask(t);
+};
+G.askGuidance=function(){
+  var cands=tasks.filter(function(t){return !t.done;});
+  if(!cands.length){showPopup(pick(GUIDANCE_EMPTY));return;}
+  var sorted=cands.slice().sort(function(a,b){return ((COL_SCORE[b.col]||1)*(ROW_SCORE[b.row]||1)*(PRI_SCORE[b.priority]||1))-((COL_SCORE[a.col]||1)*(ROW_SCORE[a.row]||1)*(PRI_SCORE[a.priority]||1));});
+  var pool=sorted.slice(0,Math.max(1,Math.ceil(sorted.length*0.3)));
+  var chosen=pool[Math.floor(Math.random()*pool.length)];
+  showPopup(pick(GUIDANCE_INTROS)(chosen.text),chosen.id);
+  expanded=chosen.id;G.render();
+};
+G.handleSprite=function(e){
+  var file=e.target.files[0];if(!file)return;
+  var r=new FileReader();
+  r.onload=function(ev){var url=ev.target.result;localStorage.setItem("ledger-sprite",url);showSprite(url);};
+  r.readAsDataURL(file);
+};
+
+// placeholder Firebase ops — overwritten by module script below
+G.saveTask=function(t){console.warn("Firebase not ready yet");};
+G.delTask=function(id){console.warn("Firebase not ready yet");};
+
+// tasks getter/setter for Firebase module
+Object.defineProperty(G,"tasks",{get:function(){return tasks;},set:function(v){tasks=v;}});
+G.newText="";
+Object.defineProperty(G,"newText",{get:function(){return newText;},set:function(v){newText=v;}});
+
+// snow
+(function(){
+  var snow=document.getElementById("snow");
+  for(var i=0;i<48;i++){
+    var d=document.createElement("div");d.className="flake";
+    var sz=0.8+Math.random()*1.6,sp=18+Math.random()*30,dl=-(Math.random()*40),dr=(Math.random()-0.5)*30,op=0.08+Math.random()*0.18;
+    d.style.cssText="left:"+Math.random()*100+"%;top:0;width:"+sz+"px;height:"+sz+"px;opacity:"+op+";--drift:"+dr+"px;animation:snowfall "+sp+"s linear "+dl+"s infinite";
     snow.appendChild(d);
   }
 })();
 
-// ── quote rotation ─────────────────────────────────────────────────────────
-let qi=0;
-setInterval(()=>{
-  const el=document.getElementById("quote");el.style.opacity=0;
-  setTimeout(()=>{qi=(qi+1)%QUOTES.length;el.textContent="❄ "+QUOTES[qi];el.style.opacity=1;},600);
+// quote rotation
+var qi=0;
+setInterval(function(){
+  var el=document.getElementById("quote");el.style.opacity=0;
+  setTimeout(function(){qi=(qi+1)%QUOTES.length;el.textContent="❄ "+QUOTES[qi];el.style.opacity=1;},600);
 },9000);
 
-// ── sprite ─────────────────────────────────────────────────────────────────
-window.handleSprite=e=>{
-  const file=e.target.files[0];if(!file)return;
-  const r=new FileReader();
-  r.onload=ev=>{
-    const url=ev.target.result;
-    localStorage.setItem("ledger-sprite",url);
-    showSprite(url);
-  };
-  r.readAsDataURL(file);
-};
+// sprite
 function showSprite(url){
   document.getElementById("arthas-img").src=url;
   document.getElementById("arthas-wrap").style.display="block";
   document.getElementById("upload-btn").style.display="none";
 }
-try{const s=localStorage.getItem("ledger-sprite");if(s)showSprite(s);}catch{}
+showSprite("arthas.png");
+try{var sp=localStorage.getItem("ledger-sprite");if(sp)showSprite(sp);}catch(e){}
 
-render();
+G.render();
+})();
 </script>
+
+<!-- STEP 2: Firebase module — G already exists, safe to use it -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js";
+import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot }
+  from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js";
+
+const app = initializeApp({
+  apiKey:"AIzaSyCiL5hZM7VRoijIq0CyWxPZsGPH2knyPqc",
+  authDomain:"ledger-of-the-damned.firebaseapp.com",
+  projectId:"ledger-of-the-damned",
+  storageBucket:"ledger-of-the-damned.firebasestorage.app",
+  messagingSenderId:"1098734925287",
+  appId:"1:1098734925287:web:8200171a9aa3a74b197942"
+});
+const db  = getFirestore(app);
+const dot = document.getElementById("sync-dot");
+
+window.G.saveTask = async t => {
+  try { await setDoc(doc(db,"tasks",t.id), t); }
+  catch(e){ dot.className="err"; console.error(e); }
+};
+window.G.delTask = async id => {
+  try { await deleteDoc(doc(db,"tasks",id)); }
+  catch(e){ dot.className="err"; console.error(e); }
+};
+
+onSnapshot(collection(db,"tasks"), snap => {
+  window.G.tasks = [];
+  snap.forEach(d => window.G.tasks.push(d.data()));
+  dot.className = "live";
+  window.G.render();
+}, () => { dot.className = "err"; });
+</script>
+
 </body>
 </html>
